@@ -24,7 +24,7 @@ then
 fi
 
 WORKING_DIR=hydrosheds-global
-mkdir -f $WORKING_DIR
+mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 cd $WORKING_DIR
 
 wget https://data.hydrosheds.org/file/hydrosheds-v1-con/af_con_3s.zip &
