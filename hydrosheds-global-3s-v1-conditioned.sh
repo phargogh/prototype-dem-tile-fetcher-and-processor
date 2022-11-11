@@ -23,6 +23,7 @@ then
     cd "$SCRATCH"
 fi
 
+CWD=$(pwd)
 WORKING_DIR=hydrosheds-global
 mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 cd $WORKING_DIR
@@ -30,4 +31,4 @@ cd $WORKING_DIR
 CONTAINER=ghcr.io/phargogh/natcap-devstack
 DIGEST=sha256:0a397b17b328d3ee85966ff22e21e7597446fad3a6764e19ba0f1da68bf5b46a
 
-singularity run docker://$CONTAINER@$DIGEST hydrosheds-global-3s-v1-con.py
+singularity run docker://$CONTAINER@$DIGEST "$CWD/hydrosheds-global-3s-v1-con.py"
