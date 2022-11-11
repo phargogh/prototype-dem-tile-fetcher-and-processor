@@ -19,8 +19,6 @@ WORKING_DIR=hydrosheds-global
 
 if [[ -n ${SHERLOCK+x} ]]
 then
-    # Load gdal if we're on sherlock.
-    module load physics gdal/3.5.2
     # execute on $SCRATCH if we're on sherlock
     WORKING_DIR="$SCRATCH/$WORKING_DIR"
 fi
