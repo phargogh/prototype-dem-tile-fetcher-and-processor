@@ -15,32 +15,19 @@
 set -e
 set -x
 
-download_and_verify() {
-    download_url=$1
-    md5sum=$2
-}
-
 if [[ -n ${SHERLOCK+x} ]]
 then
     # Load gdal if we're on sherlock.
     module load physics gdal/3.5.2
     # execute on $SCRATCH if we're on sherlock
-    cd $SCRATCH
+    cd "$SCRATCH"
 fi
 
 WORKING_DIR=hydrosheds-global
 mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 cd $WORKING_DIR
 
-cat hydrosheds-3s-v1-con.txt | parallel -j3 wget {}
+CONTAINER=ghcr.io/phargogh/natcap-devstack
+DIGEST=sha256:0a397b17b328d3ee85966ff22e21e7597446fad3a6764e19ba0f1da68bf5b46a
 
-for zipfile in $(find . -name *.zip)
-do
-    # Unzip, overwriting existing files without prompting, excluding PDFs
-    unzip -o $zipfile -x *.pdf
-done;
-
-VRT_FILE=hydrosheds-global.vrt
-GTIFF=hydrosheds-global-3s-v1-conditioned.tif
-gdalbuildvrt $VRT_FILE $(find . -name "*.tif")
-gdal_translate -of "COG" -co "COMPRESS=LZW" -co "TILED=YES" $VRT_FILE $GTIFF
+singularity run docker://$CONTAINER@$DIGEST hydrosheds-global-3s-v1-con.py
