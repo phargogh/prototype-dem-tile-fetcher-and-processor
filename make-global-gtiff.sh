@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#SBATCH --time=1:00:00
+#SBATCH --time=2:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=4G
@@ -15,6 +15,11 @@
 set -e
 set -x
 
+download_and_verify() {
+    download_url=$1
+    md5sum=$2
+}
+
 if [[ -n ${SHERLOCK+x} ]]
 then
     # Load gdal if we're on sherlock.
@@ -27,21 +32,15 @@ WORKING_DIR=hydrosheds-global
 mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 cd $WORKING_DIR
 
-wget https://data.hydrosheds.org/file/hydrosheds-v1-con/af_con_3s.zip &
-wget https://data.hydrosheds.org/file/hydrosheds-v1-con/as_con_3s.zip &
-wget https://data.hydrosheds.org/file/hydrosheds-v1-con/au_con_3s.zip &
-wget https://data.hydrosheds.org/file/hydrosheds-v1-con/eu_con_3s.zip &
-wget https://data.hydrosheds.org/file/hydrosheds-v1-con/na_con_3s.zip &
-wget https://data.hydrosheds.org/file/hydrosheds-v1-con/sa_con_3s.zip &
-
-wait $(jobs -p)
+cat hydrosheds-3s-v1-con.txt | parallel -j3 wget {}
 
 for zipfile in $(find . -name *.zip)
 do
-    unzip $zipfile
+    # Unzip, overwriting existing files without prompting, excluding PDFs
+    unzip -o $zipfile -x *.pdf
 done;
 
 VRT_FILE=hydrosheds-global.vrt
 GTIFF=hydrosheds-global-3s-v1-conditioned.tif
 gdalbuildvrt $VRT_FILE $(find . -name "*.tif")
-gdaltranslate -of "COG" -co "COMPRESS=LZW" -co "TILED=YES" $VRT_FILE $GTIFF
+gdal_translate -of "COG" -co "COMPRESS=LZW" -co "TILED=YES" $VRT_FILE $GTIFF
