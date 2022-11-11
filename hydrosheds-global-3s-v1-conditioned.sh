@@ -15,20 +15,21 @@
 set -e
 set -x
 
+WORKING_DIR=hydrosheds-global
+
 if [[ -n ${SHERLOCK+x} ]]
 then
     # Load gdal if we're on sherlock.
     module load physics gdal/3.5.2
     # execute on $SCRATCH if we're on sherlock
-    cd "$SCRATCH"
+    WORKING_DIR="$SCRATCH/$WORKING_DIR"
 fi
 
-CWD=$(pwd)
-WORKING_DIR=hydrosheds-global
 mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
-cd $WORKING_DIR
 
 CONTAINER=ghcr.io/phargogh/natcap-devstack
 DIGEST=sha256:0a397b17b328d3ee85966ff22e21e7597446fad3a6764e19ba0f1da68bf5b46a
 
-singularity run docker://$CONTAINER@$DIGEST "$CWD/hydrosheds-global-3s-v1-con.py"
+singularity run \
+    docker://$CONTAINER@$DIGEST \
+    "hydrosheds-global-3s-v1-con.py" $WORKING_DIR
