@@ -26,7 +26,7 @@ fi
 mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 
 CONTAINER=ghcr.io/phargogh/natcap-devstack
-DIGEST=sha256:0a397b17b328d3ee85966ff22e21e7597446fad3a6764e19ba0f1da68bf5b46a
+DIGEST=sha256:acdae8dc64e1c7f31e6d2a1f92aa16d1f49c50d58adcd841ee2d325a96de89d9
 
 singularity run \
     docker://$CONTAINER@$DIGEST \
