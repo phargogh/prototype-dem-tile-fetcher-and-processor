@@ -76,7 +76,8 @@ def download_and_checksum(source_url, target_file):
 
 def unzip_raster_from_archive(target_zipfile, target_raster):
     with zipfile.ZipFile(target_zipfile) as hydrosheds_zip:
-        hydrosheds_zip.extract(target_raster, os.path.basename(target_raster))
+        hydrosheds_zip.extract(os.path.basename(target_raster),
+                               path=os.path.dirname(target_raster))
 
 
 def thread_worker(source_url, target_zipfile, target_raster, failed):
