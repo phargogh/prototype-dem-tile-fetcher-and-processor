@@ -7,6 +7,7 @@ import time
 import zipfile
 
 import pygeoprocessing
+import pygeoprocessing.multiprocessing
 import requests
 from osgeo import gdal
 
@@ -132,9 +133,21 @@ def main(workspace):
 
     target_gtiff_path = os.path.join(os.getcwd(), 'target_rc.tif')
     LOGGER.info(f"Translating VRT to a single file --> {target_gtiff_path}")
-    pygeoprocessing.raster_calculator(
-        [(vrt_path, 1)], _identity, target_gtiff_path,
-        vrt_raster_info['datatype'], vrt_raster_info['nodata'][0])
+    raster_calculator_kwargs = {
+        'base_raster_path_band_const_list': [(vrt_path, 1)],
+        'local_op': _identity,
+        'target_raster_path': target_gtiff_path,
+        'datatype_target': vrt_raster_info['datatype'],
+        'nodata_target': vrt_raster_info['nodata'][0],
+    }
+    if hasattr(os.environ, 'SHERLOCK'):
+        raster_calculator_kwargs['n_workers'] = int(
+            os.environ['SLURM_CPUS_PER_TASK'])
+        pygeoprocessing.multiprocessing.raster_calculator(
+            **raster_calculator_kwargs)
+    else:
+        pygeoprocessing.raster_calculcator(**raster_calculator_kwargs)
+
     LOGGER.info(f"Global HydroSHEDS raster assembled at {target_gtiff_path}")
 
 
