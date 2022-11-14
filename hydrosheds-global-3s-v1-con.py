@@ -131,7 +131,8 @@ def main(workspace):
     gdal.BuildVRT(vrt_path, component_rasters)
     vrt_raster_info = pygeoprocessing.get_raster_info(vrt_path)
 
-    target_gtiff_path = os.path.join(os.getcwd(), 'target_rc.tif')
+    target_gtiff_path = os.path.join(
+        workspace, 'hydrosheds-global-3s-v1-conditioned.tif')
     LOGGER.info(f"Translating VRT to a single file --> {target_gtiff_path}")
     raster_calculator_kwargs = {
         'base_raster_path_band_const_list': [(vrt_path, 1)],
