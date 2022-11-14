@@ -141,13 +141,13 @@ def main(workspace):
         'datatype_target': vrt_raster_info['datatype'],
         'nodata_target': vrt_raster_info['nodata'][0],
     }
-    if hasattr(os.environ, 'SHERLOCK'):
+    if hasattr(os.environ, 'SCRATCH'):  # are we running on Sherlock?
         raster_calculator_kwargs['n_workers'] = int(
             os.environ['SLURM_CPUS_PER_TASK'])
         pygeoprocessing.multiprocessing.raster_calculator(
             **raster_calculator_kwargs)
     else:
-        pygeoprocessing.raster_calculcator(**raster_calculator_kwargs)
+        pygeoprocessing.raster_calculator(**raster_calculator_kwargs)
 
     LOGGER.info(f"Global HydroSHEDS raster assembled at {target_gtiff_path}")
 
