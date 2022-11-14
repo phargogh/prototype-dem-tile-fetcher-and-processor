@@ -23,6 +23,7 @@ FILE_TO_MD5SUM = {
 
 
 def verify_checksum(filepath, checksum):
+    LOGGER.info(f"Checksumming (md5) {filepath}")
     h = hashlib.md5()
     with open(filepath, "rb") as f:
         while True:
@@ -34,9 +35,11 @@ def verify_checksum(filepath, checksum):
     digest = h.hexdigest()
     if digest != checksum:
         raise AssertionError(f"Checksum failed for file {filepath}")
+    LOGGER.info(f"Checksum (md5) verified on {filepath}")
 
 
 def download_file(source_url, target_file):
+    LOGGER.info(f"Downloading {source_url} to {target_file}")
     expected_fsize = int(requests.head(source_url).headers['content-length'])
     downloaded_fsize = 0
     last_time = time.time()
@@ -52,15 +55,18 @@ def download_file(source_url, target_file):
                         f"downloaded of {source_url} ")
                 downloaded_fsize += len(chunk)
                 target.write(chunk)
+    LOGGER.info(f"Download finished: {target_file}")
 
 
 def download_and_checksum(source_url, target_file):
     checksum = FILE_TO_MD5SUM[os.path.basename(source_url)]
     try:
         if os.path.exists(target_file):
+            LOGGER.info(f"Verifying existing zipfile {target_file}")
             verify_checksum(target_file, checksum)
             return
     except AssertionError:
+        LOGGER.info(f"Checksum failed for {target_file}")
         os.remove(target_file)
 
     download_file(source_url, target_file)
