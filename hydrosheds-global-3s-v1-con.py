@@ -133,7 +133,7 @@ def main(workspace):
     target_gtiff_path = os.path.join(os.getcwd(), 'target_rc.tif')
     LOGGER.info(f"Translating VRT to a single file --> {target_gtiff_path}")
     pygeoprocessing.raster_calculator(
-        [('output.vrt', 1)], _identity, target_gtiff_path,
+        [(vrt_path, 1)], _identity, target_gtiff_path,
         vrt_raster_info['datatype'], vrt_raster_info['nodata'][0])
     LOGGER.info(f"Global HydroSHEDS raster assembled at {target_gtiff_path}")
 
