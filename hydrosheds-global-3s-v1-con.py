@@ -13,12 +13,12 @@ logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 DOWNLOAD_PREFIX = 'https://data.hydrosheds.org/file/hydrosheds-v1-con'
 FILE_TO_MD5SUM = {
-    "f_con_3s.zip": "15dc5c31c8661a84c9621e3bb3764aee",
-    "s_con_3s.zip": "298542936297892e9ff7a4e3c1123e98",
-    "u_con_3s.zip": "3929d9d2f215582bf73a9eff7bf627cd",
-    "u_con_3s.zip": "a3cfae5748a189df621ec673193144be",
-    "a_con_3s.zip": "02b0943bc1cafe714612ed193b38cbbe",
-    "a_con_3s.zip": "9d8624d79fe80f547578be6a9e932b8f",
+    "af_con_3s.zip": "15dc5c31c8661a84c9621e3bb3764aee",
+    "as_con_3s.zip": "298542936297892e9ff7a4e3c1123e98",
+    "au_con_3s.zip": "3929d9d2f215582bf73a9eff7bf627cd",
+    "eu_con_3s.zip": "a3cfae5748a189df621ec673193144be",
+    "na_con_3s.zip": "02b0943bc1cafe714612ed193b38cbbe",
+    "sa_con_3s.zip": "9d8624d79fe80f547578be6a9e932b8f",
 }
 
 
