@@ -4,6 +4,7 @@ import os
 import sys
 import threading
 import time
+import zipfile
 
 import pygeoprocessing
 import requests
@@ -73,9 +74,15 @@ def download_and_checksum(source_url, target_file):
     verify_checksum(target_file, checksum)
 
 
-def thread_worker(source_url, target_file, failed):
+def unzip_raster_from_archive(target_zipfile, target_raster):
+    with zipfile.ZipFile(target_zipfile) as hydrosheds_zip:
+        hydrosheds_zip.extract(target_raster, os.path.basename(target_raster))
+
+
+def thread_worker(source_url, target_zipfile, target_raster, failed):
     try:
-        download_and_checksum(source_url, target_file)
+        download_and_checksum(source_url, target_zipfile)
+        unzip_raster_from_archive(target_raster)
     except Exception:
         LOGGER.exception(
             f"Thread {threading.current_thread()} ({source_url}) failed.")
@@ -95,14 +102,17 @@ def main(workspace):
     component_rasters = []
     component_threads = []
     failed = threading.Event()
-    for filename, checksum in FILE_TO_MD5SUM.items():
-        target_filepath = os.path.join(workspace, filename)
-        component_rasters.append(target_filepath)
+    for zip_filename, checksum in FILE_TO_MD5SUM.items():
+        target_zipfile = os.path.join(workspace, zip_filename)
+        target_raster = os.path.join(workspace, os.path.splitext(
+            os.path.basename(target_zipfile))[0] + '.tif')
+        component_rasters.append(target_raster)
         thread = threading.Thread(
                 target=thread_worker,
                 kwargs={
-                    'source_url': f'{DOWNLOAD_PREFIX}/{filename}',
-                    'target_file': os.path.join(target_filepath),
+                    'source_url': f'{DOWNLOAD_PREFIX}/{zip_filename}',
+                    'target_zipfile': target_zipfile,
+                    'target_raster': target_raster,
                     'failed': failed,
                 }
             )
