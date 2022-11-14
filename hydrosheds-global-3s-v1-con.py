@@ -82,7 +82,7 @@ def unzip_raster_from_archive(target_zipfile, target_raster):
 def thread_worker(source_url, target_zipfile, target_raster, failed):
     try:
         download_and_checksum(source_url, target_zipfile)
-        unzip_raster_from_archive(target_raster)
+        unzip_raster_from_archive(target_zipfile, target_raster)
     except Exception:
         LOGGER.exception(
             f"Thread {threading.current_thread()} ({source_url}) failed.")
