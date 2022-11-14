@@ -22,6 +22,9 @@ FILE_TO_MD5SUM = {
     "na_con_3s.zip": "02b0943bc1cafe714612ed193b38cbbe",
     "sa_con_3s.zip": "9d8624d79fe80f547578be6a9e932b8f",
 }
+DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS = ('GTIFF', (
+    'TILED=YES', 'BIGTIFF=YES', 'COMPRESS=LZW', 'NUM_THREADS=4',
+    'BLOCKXSIZE=256', 'BLOCKYSIZE=256'))
 
 
 def verify_checksum(filepath, checksum):
@@ -140,14 +143,9 @@ def main(workspace):
         'target_raster_path': target_gtiff_path,
         'datatype_target': vrt_raster_info['datatype'],
         'nodata_target': vrt_raster_info['nodata'][0],
+        'raster_driver_creation_tuple': DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS,
     }
-    if os.environ.get('SHERLOCK', False):  # are we running on Sherlock?
-        raster_calculator_kwargs['n_workers'] = int(
-            os.environ['SLURM_CPUS_PER_TASK'])
-        pygeoprocessing.multiprocessing.raster_calculator(
-            **raster_calculator_kwargs)
-    else:
-        pygeoprocessing.raster_calculator(**raster_calculator_kwargs)
+    pygeoprocessing.raster_calculator(**raster_calculator_kwargs)
 
     LOGGER.info(f"Global HydroSHEDS raster assembled at {target_gtiff_path}")
 
