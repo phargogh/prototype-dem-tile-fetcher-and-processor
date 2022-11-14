@@ -30,4 +30,4 @@ DIGEST=sha256:acdae8dc64e1c7f31e6d2a1f92aa16d1f49c50d58adcd841ee2d325a96de89d9
 
 singularity run \
     docker://$CONTAINER@$DIGEST \
-    "hydrosheds-global-3s-v1-con.py" $WORKING_DIR
+    python "hydrosheds-global-3s-v1-con.py" $WORKING_DIR
