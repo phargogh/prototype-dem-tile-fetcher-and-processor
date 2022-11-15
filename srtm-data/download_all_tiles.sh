@@ -26,4 +26,4 @@ fi
 
 mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 
-cat srtm30m_urls.txt | parallel -j 8 "wget --directory-prefix=$WORKING_DIR {}"
+cat srtm30m_urls.txt | parallel -j 8 "wget --user='$NASA_EARTHDATA_USERNAME' --password='$NASA_EARTHDATA_PASSWORD' --directory-prefix=$WORKING_DIR {}"
