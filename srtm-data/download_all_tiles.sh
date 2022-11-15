@@ -26,4 +26,16 @@ fi
 
 mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 
-cat srtm30m_urls.txt | parallel -j 8 "wget --no-clobber --no-verbose --user='$NASA_EARTHDATA_USERNAME' --password='$NASA_EARTHDATA_PASSWORD' --directory-prefix=$WORKING_DIR {}"
+cat srtm30m_urls.txt | parallel -j 8 --retries 3 "wget --no-clobber --no-verbose --user='$NASA_EARTHDATA_USERNAME' --password='$NASA_EARTHDATA_PASSWORD' --directory-prefix=$WORKING_DIR {}"
+
+SRTM_JSON_FILE="srtm_bboxes.json"
+echo "{" >> $SRTM_JSON_FILE
+for srtm_file in $(find $WORKING_DIR -name "*.hgt.zip")
+do
+    echo "\"$(basename $srtm_file)\": $(gdalinfo -json $srtm_file | jq -c '.wgs84Extent.coordinates[0]')," >> $SRTM_JSON_FILE
+done
+echo "}" >> $SRTM_JSON_FILE
+
+# Remove the comma from the last object to make the json valid.
+# This complicated sed expression is thanks to https://unix.stackexchange.com/a/485010
+sed -i.bak ':begin;$!N;s/,\n}/\n}/g;tbegin;P;D' $SRTM_JSON_FILE
