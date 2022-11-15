@@ -1,7 +1,7 @@
 import hashlib
 import logging
+import math
 import os
-import sys
 import threading
 import time
 import zipfile
@@ -11,7 +11,7 @@ import pygeoprocessing.multiprocessing
 import requests
 from osgeo import gdal
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 DOWNLOAD_PREFIX = 'https://data.hydrosheds.org/file/hydrosheds-v1-con'
 FILE_TO_MD5SUM = {
@@ -25,6 +25,44 @@ FILE_TO_MD5SUM = {
 DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS = ('GTIFF', (
     'TILED=YES', 'BIGTIFF=YES', 'COMPRESS=LZW', 'NUM_THREADS=4',
     'BLOCKXSIZE=256', 'BLOCKYSIZE=256'))
+
+
+def build_overviews(raster_path, internal=False,
+                    resampling_method=gdal.GRA_NearestNeighbour):
+    open_flags = gdal.OF_RASTER
+    if internal:
+        open_flags |= gdal.GA_Update
+        LOGGER.info(f"Building internal overviews on {raster_path}")
+    else:
+        LOGGER.info("Building external overviews.")
+    raster = gdal.OpenEx(raster_path, open_flags)
+    n_pixels_x = raster.RasterXSize
+    n_pixels_y = raster.RasterYSize
+
+    # This loop and limiting factor borrowed from gdaladdo.cpp
+    overview_scales = []
+    factor = 2
+    limiting_factor = 256
+    while (math.ceil(n_pixels_x / factor) > limiting_factor or
+           math.ceil(n_pixels_y / factor) > limiting_factor):
+        overview_scales.append(factor)
+        factor *= 2
+
+    def overviews_progress(*args, **kwargs):
+        pct_complete, name, other = args
+        percent = round(pct_complete * 100, 2)
+        if time.time() - overviews_progress.last_progress_report > 5.0:
+            LOGGER.info(f"Overviews progress: {percent}%")
+            overviews_progress.last_progress_report = time.time()
+    overviews_progress.last_progress_report = time.time()
+
+    LOGGER.debug(f"Using overviews {overview_scales}")
+    result = raster.BuildOverviews('NEAREST', overviewlist=overview_scales,
+                                   callback=overviews_progress)
+    LOGGER.info(f"Overviews completed for {raster_path}")
+    if result:  # Result will be nonzero on error.
+        raise RuntimeError(
+            f"Building overviews failed or was interrupted for {raster_path}")
 
 
 def verify_checksum(filepath, checksum):
