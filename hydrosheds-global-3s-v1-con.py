@@ -2,6 +2,7 @@ import hashlib
 import logging
 import math
 import os
+import sys
 import threading
 import time
 import zipfile
@@ -184,6 +185,7 @@ def main(workspace):
         'raster_driver_creation_tuple': DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS,
     }
     pygeoprocessing.raster_calculator(**raster_calculator_kwargs)
+    build_overviews(target_gtiff_path, internal=True)
 
     LOGGER.info(f"Global HydroSHEDS raster assembled at {target_gtiff_path}")
 
