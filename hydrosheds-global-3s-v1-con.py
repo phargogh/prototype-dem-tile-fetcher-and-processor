@@ -183,7 +183,7 @@ def main(workspace):
         'datatype_target': vrt_raster_info['datatype'],
         'nodata_target': vrt_raster_info['nodata'][0],
         'raster_driver_creation_tuple': DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS,
-        'largest_block': 2**17,  # 2x the size of default pgp blocksize
+        'largest_block': 2**18,  # 4x the size of default pgp blocksize
     }
     pygeoprocessing.raster_calculator(**raster_calculator_kwargs)
     build_overviews(target_gtiff_path, internal=True)
