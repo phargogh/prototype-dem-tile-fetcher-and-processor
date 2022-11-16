@@ -65,11 +65,12 @@ def main(bbox, cache_dir, target_vrt):
     valid_intersecting_tiles = []
     for index, tile in enumerate(intersecting_tiles):
         LOGGER.info(
-            f"({index}/{len(intersecting_tiles)} "
+            f"({index+1}/{len(intersecting_tiles)} "
             f"Determining GDAL-readable filepath for {tile}")
         filepath = os.path.join(cache_dir, tile)
         raster = gdal.Open(filepath)
         if raster is None:
+            LOGGER.info(f"Falling back to zipfile checking for {tile}")
             old_filepath = filepath
             with zipfile.ZipFile(filepath) as srtm_archive:
                 sub_filename = srtm_archive.infolist()[0].filename
