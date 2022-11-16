@@ -31,7 +31,10 @@ fi
 mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 
 # Runtime: This took about 2 hours to run on 4 CPUs
-cat srtm30m_urls.txt | parallel -j 8 --retries 3 "wget --no-clobber --no-verbose --user='$NASA_EARTHDATA_USERNAME' --password='$NASA_EARTHDATA_PASSWORD' --directory-prefix=$WORKING_DIR {}"
+#cat srtm30m_urls.txt | parallel -j 8 --retries 3 "wget --no-clobber --no-verbose --user='$NASA_EARTHDATA_USERNAME' --password='$NASA_EARTHDATA_PASSWORD' --directory-prefix=$WORKING_DIR {}"
+
+# Try this alternate approach and see if it's faster
+wget --no-clobber --no-verbose --user="$NASA_EARTHDATA_USERNAME" --password="$NASA_EARTHDATA_PASSWORD" --directory-prefix=$WORKING_DIR --input-file srtm30m_urls.txt
 
 # Runtime: with all of the SRTM files downloaded, this took just under 3 hours to run.
 # It was on SCRATCH, so I'm guessing that the disk I/O is the bottleneck.
@@ -47,7 +50,7 @@ set +x
 for srtm_file in $(find $WORKING_DIR -name "*.hgt.zip")
 do
     echo $srtm_file
-    SRTM_BASENAME=$(echo $srtm_file | sed 's|.zip||g')
+    SRTM_BASENAME=$(basename $srtm_file | sed 's|.zip||g')
     # using /vsizip/ is more reliable; some (about 17) SRTM tiles will only
     # open with /vsizip/.
     RASTER_METADATA=$(gdalinfo -json /vsizip/$srtm_file/$SRTM_BASENAME)
