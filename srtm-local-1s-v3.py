@@ -63,7 +63,7 @@ def main(bbox, cache_dir, target_vrt):
     LOGGER.info(f"{len(intersecting_tiles)} intersecting tiles found")
 
     valid_intersecting_tiles = []
-    for index, tile in len(intersecting_tiles):
+    for index, tile in enumerate(intersecting_tiles):
         LOGGER.info(
             f"({index}/{len(intersecting_tiles)} "
             f"Determining GDAL-readable filepath for {tile}")
