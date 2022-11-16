@@ -59,7 +59,7 @@ do
     # open with /vsizip/.
     RASTER_METADATA=$(gdalinfo -json /vsizip/$srtm_file/$SRTM_BASENAME)
     echo "\"$(basename $srtm_file)\": $(echo $RASTER_METADATA | jq -c '.wgs84Extent.coordinates[0]')," >> $SRTM_JSON_FILE
-    n_files=$(($n_files_so_far+1))
+    n_files_so_far=$(($n_files_so_far+1))
 done
 echo "}" >> $SRTM_JSON_FILE
 
