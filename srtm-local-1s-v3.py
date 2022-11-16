@@ -63,7 +63,10 @@ def main(bbox, cache_dir, target_vrt):
     LOGGER.info(f"{len(intersecting_tiles)} intersecting tiles found")
 
     valid_intersecting_tiles = []
-    for tile in intersecting_tiles:
+    for index, tile in len(intersecting_tiles):
+        LOGGER.info(
+            f"({index}/{len(intersecting_tiles)} "
+            f"Determining GDAL-readable filepath for {tile}")
         filepath = os.path.join(cache_dir, tile)
         raster = gdal.Open(filepath)
         if raster is None:
