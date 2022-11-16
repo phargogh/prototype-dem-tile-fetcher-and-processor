@@ -54,7 +54,7 @@ n_files_so_far=1
 for srtm_file in $(find $WORKING_DIR -name "*.hgt.zip")
 do
     echo "$srtm_file $n_files_so_far \t\t of $n_total"
-    SRTM_BASENAME=$(basename $srtm_file | sed 's|.zip||g' | sed 's|.SRTMGL1||g')
+    SRTM_BASENAME=$(unzip -l $srtm_file | head -n4 | tail -n1 | awk '{ print $4 }')
     # using /vsizip/ is more reliable; some (about 17) SRTM tiles will only
     # open with /vsizip/.
     RASTER_METADATA=$(gdalinfo -json /vsizip/$srtm_file/$SRTM_BASENAME)
