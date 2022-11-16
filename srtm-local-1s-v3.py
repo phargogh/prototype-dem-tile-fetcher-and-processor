@@ -158,8 +158,14 @@ def main(args=None):
 
     parsed_args = parser.parse_args(args)
 
+    try:
+        bbox = [float(x) for x in parsed_args.extent.split(',')],
+    except ValueError:
+        # user provided "global", which is a-ok
+        bbox = parsed_args.extent
+
     srtm(
-        [float(x) for x in parsed_args.extent.split(',')],
+        bbox,
         parsed_args.cache_dir,
         parsed_args.vrt_path,
         parsed_args.gtiff_path
