@@ -4,10 +4,10 @@ import os
 import zipfile
 
 import pygeoprocessing
-import requests
 import shapely.geometry
 import shapely.prepared
 from osgeo import gdal
+from pygeoprocessing import DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
@@ -38,7 +38,11 @@ LOGGER = logging.getLogger(__name__)
 #     do a raster_calculator call if needed
 
 
-def main(bbox, cache_dir, target_vrt):
+def _identity(matrix):
+    return matrix
+
+
+def main(bbox, cache_dir, target_vrt, target_gtiff):
     LOGGER.info(f"Finding intersecting SRTM tiles for {bbox}")
 
     srtm_data_file = os.path.join(
@@ -86,8 +90,21 @@ def main(bbox, cache_dir, target_vrt):
 
     gdal.BuildVRT(target_vrt, valid_intersecting_tiles)
 
+    vrt_raster_info = pygeoprocessing.get_raster_info(target_vrt)
+
+    pygeoprocessing.geoprocessing.raster_calculator(**{
+        'base_raster_path_band_const_list': [(target_vrt, 1)],
+        'local_op': _identity,
+        'target_raster_path': target_gtiff,
+        'datatype_target': vrt_raster_info['datatype'],
+        'nodata_target': vrt_raster_info['nodata'][0],
+        'raster_driver_creation_tuple': DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS,
+        'largest_block': 2**18,  # 4x the size of default pgp blocksize
+    })
+
 
 if __name__ == '__main__':
     # bounding box for the state of california
     ca_bbox = [-124.53, 32.82, -113.71, 42]
-    main(ca_bbox, '/scratch/users/jadoug06/srtm-global-30m', 'ca.vrt')
+    main(ca_bbox, '/scratch/users/jadoug06/srtm-global-30m',
+         'ca.vrt', 'ca.tif')
