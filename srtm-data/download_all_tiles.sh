@@ -50,7 +50,7 @@ set +x
 for srtm_file in $(find $WORKING_DIR -name "*.hgt.zip")
 do
     echo $srtm_file
-    SRTM_BASENAME=$(basename $srtm_file | sed 's|.zip||g')
+    SRTM_BASENAME=$(basename $srtm_file | sed 's|.zip||g' | sed 's|.SRTMGL1||g')
     # using /vsizip/ is more reliable; some (about 17) SRTM tiles will only
     # open with /vsizip/.
     RASTER_METADATA=$(gdalinfo -json /vsizip/$srtm_file/$SRTM_BASENAME)
