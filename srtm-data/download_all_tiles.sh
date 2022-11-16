@@ -53,11 +53,13 @@ n_files_so_far=1
 # $srtm_file is an absolute path in this case.
 for srtm_file in $(find $WORKING_DIR -name "*.hgt.zip")
 do
-    echo "$srtm_file $n_files_so_far \t\t of $n_total"
-    SRTM_BASENAME=$(unzip -l $srtm_file | head -n4 | tail -n1 | awk '{ print $4 }')
-    # using /vsizip/ is more reliable; some (about 17) SRTM tiles will only
-    # open with /vsizip/.
-    RASTER_METADATA=$(gdalinfo -json /vsizip/$srtm_file/$SRTM_BASENAME)
+    echo -e "$srtm_file $n_files_so_far \t\t of $n_total"
+
+    # gdalinfo is supposed to be able to extract the SRTM files (and it usually
+    # does).  But there are about 17 tiles that aren't accessible with the standard
+    # gdalinfo, so we need to specifically and correctly name those files.
+    # The /vsigzip/ approach is more reliable, but slower, so we only use that as a fallback when needed.
+    RASTER_METADATA=$(gdalinfo -json $srtm_file || gdalinfo -json /vsizip/$srtm_file/$(unzip -l $srtm_file | head -n4 | tail -n1 | awk '{ print $4 }'))
     echo "\"$(basename $srtm_file)\": $(echo $RASTER_METADATA | jq -c '.wgs84Extent.coordinates[0]')," >> $SRTM_JSON_FILE
     n_files_so_far=$(($n_files_so_far+1))
 done
