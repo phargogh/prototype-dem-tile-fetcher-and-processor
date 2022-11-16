@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-#SBATCH --time=4:00:00
+#SBATCH --time=6:00:00
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu=4G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jdouglass@stanford.edu
@@ -12,8 +12,10 @@
 #
 # --partition=hns,normal means that this will be submitted to both queues, whichever gets to it first will be used.
 
-
+# fail the script on first nonzero exit code.
 set -e
+
+# echo the commands as they're executed
 set -x
 
 WORKING_DIR=srtm-global-30m
