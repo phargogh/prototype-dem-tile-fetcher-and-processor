@@ -7,10 +7,12 @@ import pygeoprocessing
 import shapely.geometry
 import shapely.prepared
 from osgeo import gdal
-from pygeoprocessing import DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS
 
 logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
+DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS = ('GTIFF', (
+    'TILED=YES', 'BIGTIFF=YES', 'COMPRESS=LZW', 'NUM_THREADS=4',
+    'BLOCKXSIZE=256', 'BLOCKYSIZE=256'))
 
 # GDAL has an STRM driver!
 # https://gdal.org/drivers/raster/srtmhgt.html
