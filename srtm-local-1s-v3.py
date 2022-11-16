@@ -110,10 +110,14 @@ def srtm(bbox, cache_dir, target_vrt, target_gtiff):
     LOGGER.info(f"{len(intersecting_tiles)} intersecting tiles found")
 
     valid_intersecting_tiles = []
+    last_time_logged = time.time()
     for index, tile in enumerate(intersecting_tiles):
-        LOGGER.info(
-            f"({index+1}/{len(intersecting_tiles)} "
-            f"Determining GDAL-readable filepath for {tile}")
+        if time.time() - last_time_logged > 5.0:
+            LOGGER.info(
+                f"({index+1}/{len(intersecting_tiles)}) "
+                f"Determining GDAL-readable filepath for {tile}")
+            last_time_logged = time.time()
+
         filepath = os.path.join(cache_dir, tile)
         raster = gdal.Open(filepath)
         if raster is None:
