@@ -1,3 +1,4 @@
+import argparse
 import json
 import logging
 import math
@@ -84,7 +85,7 @@ def _identity(matrix):
     return matrix
 
 
-def main(bbox, cache_dir, target_vrt, target_gtiff):
+def srtm(bbox, cache_dir, target_vrt, target_gtiff):
     LOGGER.info(f"Finding intersecting SRTM tiles for {bbox}")
 
     srtm_data_file = os.path.join(
@@ -143,11 +144,32 @@ def main(bbox, cache_dir, target_vrt, target_gtiff):
         'raster_driver_creation_tuple': DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS,
         'largest_block': 2**18,  # 4x the size of default pgp blocksize
     })
-    build_overviews(target_gtiff, internal=True)
+    build_overviews(target_gtiff, internal=False)
+
+
+def main(args=None):
+    parser = argparse.ArgumentParser(
+        prog='SRTM Tile Merger',
+        description='Merge SRTM tiles')
+    parser.add_argument('--extent')  # "minx,miny,maxx,maxy"
+    parser.add_argument('--cache-dir')
+    parser.add_argument('--vrt-path')
+    parser.add_argument('--gtiff-path')
+
+    parsed_args = parser.parse_args(args)
+
+    srtm(
+        [float(x) for x in parsed_args.extent.split(',')],
+        parsed_args.cache_dir,
+        parsed_args.vrt_path,
+        parsed_args.gtiff_path
+    )
+
 
 
 if __name__ == '__main__':
     # bounding box for the state of california
-    ca_bbox = [-124.53, 32.82, -113.71, 42]
-    main(ca_bbox, '/scratch/users/jadoug06/srtm-global-30m',
-         'ca.vrt', 'ca.tif')
+    #ca_bbox = [-124.53, 32.82, -113.71, 42]
+    #main(ca_bbox, '/scratch/users/jadoug06/srtm-global-30m',
+    #     'ca.vrt', 'ca.tif')
+    main()
