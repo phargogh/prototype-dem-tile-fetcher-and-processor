@@ -26,7 +26,7 @@ then
     # execute on $SCRATCH if we're on sherlock
     WORKING_DIR="$SCRATCH/$WORKING_DIR"
     module load physics gdal/3.5.2
-    module load jq
+    module load system jq
 fi
 
 mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
