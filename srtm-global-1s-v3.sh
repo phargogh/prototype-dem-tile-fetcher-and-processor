@@ -7,7 +7,7 @@
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=jdouglass@stanford.edu
 #SBATCH --partition=hns,normal
-#SBATCH --job-name="Hydrosheds-global-3s-v1-conditioned"
+#SBATCH --job-name="srtm-global-1s-v3"
 #SBATCH --output=/scratch/users/jadoug06/slurm-logfiles/slurm-%j.%x.out
 #
 # --partition=hns,normal means that this will be submitted to both queues, whichever gets to it first will be used.
