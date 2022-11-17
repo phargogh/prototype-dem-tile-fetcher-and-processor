@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#SBATCH --time=2:00:00
+#SBATCH --time=6:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=4G
@@ -28,10 +28,14 @@ mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 CONTAINER=ghcr.io/phargogh/natcap-devstack
 DIGEST=sha256:acdae8dc64e1c7f31e6d2a1f92aa16d1f49c50d58adcd841ee2d325a96de89d9
 
+# Unzip everything over to L_SCRATCH before building a VRT
+CACHE="$L_SCRATCH"
+find "$SCRATCH/srtm-global-30m" -name "*.zip" | parallel -j 8 "unzip -d $CACHE {}"
+
 singularity run \
     docker://$CONTAINER@$DIGEST \
     python "srtm-local-1s-v3.py" \
         --extent="global" \
-        --cache-dir="$SCRATCH/srtm-global-30m" \
+        --cache-dir="$CACHE" \
         --vrt-path="$WORKING_DIR/global.vrt" \
         --gtiff-path="$WORKING_DIR/srtm-global-1s-v3.tif"

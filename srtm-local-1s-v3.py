@@ -140,7 +140,8 @@ def srtm(bbox, cache_dir, target_vrt, target_gtiff):
                 f"Determining GDAL-readable filepath for {tile}")
             last_time_logged = time.time()
 
-        filepath = os.path.join(cache_dir, subdir, tile)
+        #filepath = os.path.join(cache_dir, subdir, tile)
+        filepath = os.path.join(cache_dir, tile)
 
         if tile.split('.')[0] in PROBLEMATIC_TILES:
             with zipfile.ZipFile(filepath) as srtm_archive:
@@ -149,8 +150,10 @@ def srtm(bbox, cache_dir, target_vrt, target_gtiff):
 
         valid_intersecting_tiles.append(filepath)
 
+    LOGGER.info("Building VRT")
     gdal.BuildVRT(target_vrt, valid_intersecting_tiles)
 
+    LOGGER.info("Getting raster info")
     vrt_raster_info = pygeoprocessing.get_raster_info(target_vrt)
 
     pygeoprocessing.geoprocessing.raster_calculator(**{
