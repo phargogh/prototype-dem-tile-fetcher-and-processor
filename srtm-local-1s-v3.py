@@ -141,12 +141,17 @@ def srtm(bbox, cache_dir, target_vrt, target_gtiff):
             last_time_logged = time.time()
 
         #filepath = os.path.join(cache_dir, subdir, tile)
-        filepath = os.path.join(cache_dir, tile)
-
         if tile.split('.')[0] in PROBLEMATIC_TILES:
-            with zipfile.ZipFile(filepath) as srtm_archive:
-                sub_filename = srtm_archive.infolist()[0].filename
-            filepath = f'/vsizip/{filepath}/{sub_filename}'
+            filepath = os.path.join(
+                cache_dir, tile.replace('.hgt.zip', '.hgt'))
+        else:
+            filepath = os.path.join(
+                cache_dir, tile.replace('SRTMGL1.hgt.zip', '.hgt'))
+
+        #if tile.split('.')[0] in PROBLEMATIC_TILES:
+        #    with zipfile.ZipFile(filepath) as srtm_archive:
+        #        sub_filename = srtm_archive.infolist()[0].filename
+        #    filepath = f'/vsizip/{filepath}/{sub_filename}'
 
         valid_intersecting_tiles.append(filepath)
 
