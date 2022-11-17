@@ -146,7 +146,7 @@ def srtm(bbox, cache_dir, target_vrt, target_gtiff):
                 cache_dir, tile.replace('.hgt.zip', '.hgt'))
         else:
             filepath = os.path.join(
-                cache_dir, tile.replace('SRTMGL1.hgt.zip', '.hgt'))
+                cache_dir, tile.replace('.SRTMGL1.hgt.zip', '.hgt'))
 
         #if tile.split('.')[0] in PROBLEMATIC_TILES:
         #    with zipfile.ZipFile(filepath) as srtm_archive:
