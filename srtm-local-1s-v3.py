@@ -168,7 +168,7 @@ def srtm(bbox, cache_dir, target_vrt, target_gtiff):
         'datatype_target': vrt_raster_info['datatype'],
         'nodata_target': vrt_raster_info['nodata'][0],
         'raster_driver_creation_tuple': DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS,
-        'largest_block': 2**18,  # 4x the size of default pgp blocksize
+        'largest_block': 2**19,  # 8x the size of default pgp blocksize
     })
     build_overviews(target_gtiff, internal=False)
 

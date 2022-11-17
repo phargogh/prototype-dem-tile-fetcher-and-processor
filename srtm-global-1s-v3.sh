@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#SBATCH --time=6:00:00
+#SBATCH --time=24:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=4G
@@ -32,10 +32,13 @@ DIGEST=sha256:acdae8dc64e1c7f31e6d2a1f92aa16d1f49c50d58adcd841ee2d325a96de89d9
 CACHE="$L_SCRATCH"
 find "$SCRATCH/srtm-global-30m" -name "*.zip" | parallel -j 8 "unzip -d $CACHE {}"
 
+GTIFF_PATH="$L_SCRATCH/srtm-global-1s-v3.tif"
 singularity run \
     docker://$CONTAINER@$DIGEST \
     python "srtm-local-1s-v3.py" \
         --extent="global" \
         --cache-dir="$CACHE" \
         --vrt-path="$WORKING_DIR/global.vrt" \
-        --gtiff-path="$WORKING_DIR/srtm-global-1s-v3.tif"
+        --gtiff-path="$GTIFF_PATH"
+
+rsync --progress "$GTIFF_PATH" "$WORKING_DIR/srtm-global-1s-v3.tif"
