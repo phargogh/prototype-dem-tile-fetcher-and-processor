@@ -42,6 +42,27 @@ DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS = ('GTIFF', (
 #     create a VRT
 #     do a raster_calculator call if needed
 
+# Thanks to https://www.opentopodata.org/notes/invalid-srtm-zips/ for listing
+# these out.
+PROBLEMATIC_TILES = set([
+    "N37E051",
+    "N37E052",
+    "N38E050",
+    "N38E051",
+    "N38E052",
+    "N39E050",
+    "N39E051",
+    "N40E051",
+    "N41E050",
+    "N41E051",
+    "N42E049",
+    "N42E050",
+    "N43E048",
+    "N43E049",
+    "N44E048",
+    "N44E049",
+])
+
 
 def build_overviews(raster_path, internal=False,
                     resampling_method=gdal.GRA_NearestNeighbour):
@@ -120,20 +141,12 @@ def srtm(bbox, cache_dir, target_vrt, target_gtiff):
             last_time_logged = time.time()
 
         filepath = os.path.join(cache_dir, subdir, tile)
-        raster = gdal.Open(filepath)
-        if raster is None:
-            LOGGER.info(f"Falling back to zipfile checking for {tile}")
-            old_filepath = filepath
+
+        if tile.split('.')[0] in PROBLEMATIC_TILES:
             with zipfile.ZipFile(filepath) as srtm_archive:
                 sub_filename = srtm_archive.infolist()[0].filename
-            filepath = f'/vsizip/{old_filepath}/{sub_filename}'
-            raster = gdal.Open(filepath)
-            if raster is None:
-                raise AssertionError(
-                    f'Could not open {tile} at either {old_filepath} '
-                    f'or {filepath}')
+            filepath = f'/vsizip/{filepath}/{sub_filename}'
 
-        raster = None
         valid_intersecting_tiles.append(filepath)
 
     gdal.BuildVRT(target_vrt, valid_intersecting_tiles)
@@ -175,7 +188,6 @@ def main(args=None):
         parsed_args.vrt_path,
         parsed_args.gtiff_path
     )
-
 
 
 if __name__ == '__main__':
