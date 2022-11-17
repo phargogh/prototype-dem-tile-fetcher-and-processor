@@ -112,13 +112,14 @@ def srtm(bbox, cache_dir, target_vrt, target_gtiff):
     valid_intersecting_tiles = []
     last_time_logged = time.time()
     for index, tile in enumerate(intersecting_tiles):
+        subdir = tile[:4]  # subdirectory prefix; for lustre performance
         if time.time() - last_time_logged > 5.0:
             LOGGER.info(
                 f"({index+1}/{len(intersecting_tiles)}) "
                 f"Determining GDAL-readable filepath for {tile}")
             last_time_logged = time.time()
 
-        filepath = os.path.join(cache_dir, tile)
+        filepath = os.path.join(cache_dir, subdir, tile)
         raster = gdal.Open(filepath)
         if raster is None:
             LOGGER.info(f"Falling back to zipfile checking for {tile}")
