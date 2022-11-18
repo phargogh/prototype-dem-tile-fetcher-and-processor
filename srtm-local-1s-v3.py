@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 DEFAULT_GTIFF_CREATION_TUPLE_OPTIONS = ('GTIFF', (
     'TILED=YES', 'BIGTIFF=YES', 'COMPRESS=LZW', 'NUM_THREADS=4',
-    'BLOCKXSIZE=256', 'BLOCKYSIZE=256'))
+    'SPARSE_OK=TRUE', 'BLOCKXSIZE=256', 'BLOCKYSIZE=256'))
 
 # GDAL has an STRM driver!
 # https://gdal.org/drivers/raster/srtmhgt.html

@@ -36,15 +36,18 @@ find "$SCRATCH/srtm-global-30m" -name "*.zip" | parallel -j 8 "unzip -d $CACHE {
 VRT_PATH="$WORKING_DIR/cmdline-global.vrt"
 gdalbuildvrt $VRT_PATH $(find $CACHE -name "*.hgt")
 
-GTIFF_PATH="$L_SCRATCH/srtm-global-1s-v3.tif"
+GTIFF_PATH="$WORKING_DIR/srtm-global-1s-v3.tif"
 gdal_translate \
+    -of "GTiff" \
+    -ot "Int16" \
     -co "COMPRESS=LZW" \
+    -co "PREDICTOR=2" \
     -co "TILED=YES" \
+    -co "SPARSE_OK=TRUE" \
     "$VRT_PATH" \
     "$GTIFF_PATH"
 
 gdaladdo $GTIFF_PATH
-rsync --progress "$GTIFF_PATH" "$WORKING_DIR/cmdline-srtm-global-1s-v3.tif"
 
 #singularity run \
 #    docker://$CONTAINER@$DIGEST \
