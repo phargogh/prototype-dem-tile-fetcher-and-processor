@@ -45,6 +45,7 @@ gdal_translate \
     -co "PREDICTOR=2" \
     -co "TILED=YES" \
     -co "SPARSE_OK=TRUE" \
+    -co "NUM_THREADS=4" \
     "$VRT_PATH" \
     "$GTIFF_PATH"
 
