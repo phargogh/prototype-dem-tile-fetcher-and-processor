@@ -31,7 +31,7 @@ DIGEST=sha256:acdae8dc64e1c7f31e6d2a1f92aa16d1f49c50d58adcd841ee2d325a96de89d9
 
 CACHE="$L_SCRATCH"
 #find "$SCRATCH/srtm-global-30m" -name "*.zip" | parallel -j 8 "unzip -d $CACHE {}"
-find "$SCRATCH/srtm-global-30m" -name "*.zip" | parallel -j 8 "cp {} $CACHE"
+find "$SCRATCH/srtm-global-30m" -name "*.zip" | parallel -j 8 "cp -v {} $CACHE"
 
 VRT_PATH="$CACHE/cmdline-global.vrt"
 #gdalbuildvrt $VRT_PATH $(find $CACHE -name "*.hgt.zip")
