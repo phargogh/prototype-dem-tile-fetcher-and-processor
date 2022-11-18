@@ -29,14 +29,15 @@ mkdir $WORKING_DIR || echo "$WORKING_DIR already exists"
 CONTAINER=ghcr.io/phargogh/natcap-devstack
 DIGEST=sha256:acdae8dc64e1c7f31e6d2a1f92aa16d1f49c50d58adcd841ee2d325a96de89d9
 
-# Unzip everything over to L_SCRATCH before building a VRT
 CACHE="$L_SCRATCH"
-find "$SCRATCH/srtm-global-30m" -name "*.zip" | parallel -j 8 "unzip -d $CACHE {}"
+#find "$SCRATCH/srtm-global-30m" -name "*.zip" | parallel -j 8 "unzip -d $CACHE {}"
+find "$SCRATCH/srtm-global-30m" -name "*.zip" | parallel -j 8 "cp {} $CACHE"
 
-VRT_PATH="$WORKING_DIR/cmdline-global.vrt"
-gdalbuildvrt $VRT_PATH $(find $CACHE -name "*.hgt")
+VRT_PATH="$CACHE/cmdline-global.vrt"
+#gdalbuildvrt $VRT_PATH $(find $CACHE -name "*.hgt.zip")
+gdalbuildvrt $VRT_PATH $(find $CACHE -name "*.hgt.zip")
 
-GTIFF_PATH="$WORKING_DIR/srtm-global-1s-v3.tif"
+GTIFF_PATH="$CACHE/srtm-global-1s-v3.tif"
 gdal_translate \
     -of "GTiff" \
     -ot "Int16" \
@@ -48,6 +49,8 @@ gdal_translate \
     "$GTIFF_PATH"
 
 gdaladdo $GTIFF_PATH
+
+rsync --progress $GTIFF_PATH $WORKING_DIR
 
 #singularity run \
 #    docker://$CONTAINER@$DIGEST \
