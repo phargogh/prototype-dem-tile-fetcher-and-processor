@@ -38,7 +38,7 @@ VRT_PATH="$CACHE/cmdline-global.vrt"
 gdalbuildvrt $VRT_PATH $(find $CACHE -name "*.hgt.zip")
 
 GTIFF_PATH="$CACHE/srtm-global-1s-v3.tif"
-gdal_translate \
+GDAL_CACHEMAX=1024 gdal_translate \
     -of "GTiff" \
     -ot "Int16" \
     -co "COMPRESS=LZW" \
@@ -46,7 +46,7 @@ gdal_translate \
     -co "TILED=YES" \
     -co "SPARSE_OK=TRUE" \
     -co "BIGTIFF=YES" \
-    -co "NUM_THREADS=8" \
+    -co "NUM_THREADS=4" \
     "$VRT_PATH" \
     "$GTIFF_PATH"
 
