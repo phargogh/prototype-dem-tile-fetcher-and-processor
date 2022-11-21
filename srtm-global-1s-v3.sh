@@ -50,7 +50,14 @@ GDAL_CACHEMAX=2048 gdal_translate \
     "$VRT_PATH" \
     "$GTIFF_PATH"
 
-gdaladdo $GTIFF_PATH
+# Remove the hgt zipfiles so we don't run out of disk space while building
+# overviews.
+df -h "$L_SCRATCH"
+rm $CACHE/*.hgt.zip
+df -h "$L_SCRATCH"
+
+# Generate internal overviews
+GDAL_CACHEMAX=2048 gdaladdo $GTIFF_PATH
 
 rsync --progress $GTIFF_PATH $WORKING_DIR
 
