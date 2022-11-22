@@ -20,6 +20,21 @@ WORKING_DIR=srtm-global-1s-v3-tiles
 CONTAINER=ghcr.io/natcap/devstack
 DIGEST=sha256:54066e72aa135deb8e2f60fda2f42f1856912e36967446659ad754b4b64d7efa
 
+GEOTIFF_SOURCE="$SCRATCH/srtm-global-1s-v3-BACKUP/srtm-global-1s-v3.tif"
+WORKING_VRT="$SCRATCH/srtm-global-1s-v3-BACKUP/srtm-scaled-byte.vrt"
+
+# gdal2tiles will fail if the raster is not a byte raster, so here's the
+# workaround gdal2tiles.py recommends.
+singularity run \
+    --env GDAL_CACHEMAX=1024 \
+    docker://$CONTAINER@$DIGEST \
+    gdal_translate \
+        -of VRT \
+        -ot Byte \
+        -scale \
+        "$GEOTIFF_SOURCE"
+        "$WORKING_VRT"
+
 # gdal2tiles is not available in the standard Sherlock gdal package, so here
 # we'll run it in the devstack container.
 singularity run \
@@ -29,5 +44,5 @@ singularity run \
         --webviewer=leaflet \
         --title="SRTMv3 1 Arc-Second" \
         --zoom="2-5" \
-        "$SCRATCH/srtm-global-1s-v3-BACKUP/srtm-global-1s-v3.tif" \
+        "$WORKING_VRT" \
         "$SCRATCH/$WORKING_DIR"
