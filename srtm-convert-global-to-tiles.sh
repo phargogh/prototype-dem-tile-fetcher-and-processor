@@ -32,7 +32,7 @@ singularity run \
         -of VRT \
         -ot Byte \
         -scale \
-        "$GEOTIFF_SOURCE"
+        "$GEOTIFF_SOURCE" \
         "$WORKING_VRT"
 
 # gdal2tiles is not available in the standard Sherlock gdal package, so here
