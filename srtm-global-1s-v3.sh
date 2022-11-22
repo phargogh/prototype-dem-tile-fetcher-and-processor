@@ -37,6 +37,7 @@ VRT_PATH="$CACHE/cmdline-global.vrt"
 #gdalbuildvrt $VRT_PATH $(find $CACHE -name "*.hgt.zip")
 gdalbuildvrt $VRT_PATH $(find $CACHE -name "*.hgt.zip")
 
+# Typically only takes about 7 minutes to get to this point on Sherlock.
 GTIFF_PATH="$CACHE/srtm-global-1s-v3.tif"
 GDAL_CACHEMAX=2048 gdal_translate \
     -of "GTiff" \
@@ -53,11 +54,13 @@ GDAL_CACHEMAX=2048 gdal_translate \
 # Remove the hgt zipfiles so we don't run out of disk space while building
 # overviews.
 df -h "$L_SCRATCH"
-rm $CACHE/*.hgt.zip
+find "$L_SCRATCH" -type f -name "*.hgt.zip" -delete
 df -h "$L_SCRATCH"
 
 # Generate internal overviews
+du -h "$GTIFF_PATH"
 GDAL_CACHEMAX=2048 gdaladdo $GTIFF_PATH
+du -h "$GTIFF_PATH"
 
 rsync --progress $GTIFF_PATH $WORKING_DIR
 
