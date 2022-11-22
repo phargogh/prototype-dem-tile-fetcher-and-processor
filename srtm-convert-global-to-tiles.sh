@@ -43,6 +43,7 @@ singularity run \
     gdal2tiles.py \
         --webviewer=leaflet \
         --title="SRTMv3 1 Arc-Second" \
-        --zoom="2-5" \
+        --zoom="2-14" \
+        --processes=8 \
         "$WORKING_VRT" \
         "$SCRATCH/$WORKING_DIR"
