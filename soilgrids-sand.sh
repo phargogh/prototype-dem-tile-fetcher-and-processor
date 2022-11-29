@@ -22,11 +22,12 @@ module load physics gdal/3.5.2
 GDAL_CACHEMAX=1024 gdal_translate \
     -if "WCS" \
     -of "GTiff" \
+    -sds \
     -co "COMPRESS=LZW" \
     -co "PREDICTOR=2" \
     -co "TILED=YES" \
     -co "SPARSE_OK=TRUE" \
     -co "BIGTIFF=YES" \
     -co "NUM_THREADS=4" \
-    https://maps.isric.org/mapserv?map=/map/sand.map \
+    "WCS:https://maps.isric.org/mapserv?map=/map/sand.map" \
     $SCRATCH/isric-soilgrids-wcs-layers/isric-soilgrids-sand.tif
