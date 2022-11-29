@@ -20,6 +20,7 @@ set -x
 module load physics gdal/3.5.2
 
 GDAL_CACHEMAX=1024 gdal_translate \
+    -if "WCS" \
     -of "GTiff" \
     -co "COMPRESS=LZW" \
     -co "PREDICTOR=2" \
