@@ -141,7 +141,7 @@ def main():
         LOGGER.info(f'User defined bounding box of {bbox}')
 
     try:
-        epsg_code = int(args.target_epsg)
+        target_projection_epsg = int(args.target_epsg)
     except TypeError:
         raise NotImplementedError('TODO')
 
@@ -191,7 +191,6 @@ def main():
     workspace = args.workspace
     if not os.path.exists(workspace):
         os.makedirs(workspace)
-    target_projection_epsg = args.target_epsg
 
     LOGGER.info(f"Building VRT from {len(files_to_download)} tiles")
     vrt_path = os.path.join(workspace, f'0_{product}_mosaic.vrt')
@@ -200,7 +199,7 @@ def main():
     # TODO: square off the pixel size and use that instead?
     vrt_raster_info = pygeoprocessing.get_raster_info(vrt_path)
 
-    LOGGER.info(f"Reprojecting VRT to the local projection")
+    LOGGER.info("Reprojecting VRT to the local projection")
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(int(target_projection_epsg))
     warped_raster = os.path.join(
@@ -214,7 +213,7 @@ def main():
         target_projection_wkt=srs.ExportToWkt()
     )
 
-    LOGGER.info(f"Filling sinks")
+    LOGGER.info("Filling sinks")
     filled_sinks_path = os.path.join(
         workspace, f'2_{product}_pitfilled.tif')
     pygeoprocessing.routing.fill_pits(
