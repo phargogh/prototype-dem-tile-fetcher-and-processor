@@ -1,7 +1,6 @@
 import argparse
 import json
 import logging
-import math
 import os
 import sys
 
@@ -24,6 +23,10 @@ KNOWN_ROUTING_ALGOS = {'D8', 'MFD'}
 LOGGER = logging.getLogger(__name__)
 DOWNLOAD_BASE_URLS = {
     'srtm': 'https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11',
+}
+PRODUCT_TARGET_RESOLUTION_M = {
+    'srtm': (30, -30),
+    'hydrosheds': (250, -250),
 }
 
 gdal.SetCacheMax(1024)  # Megabytes
@@ -68,6 +71,7 @@ def download(source_url, target_file, session=None):
                        total=int(response.headers.get('content-length', 0))) as fout:
         for chunk in response.iter_content(chunk_size=4096):
             fout.write(chunk)
+
 
 # find matching tiles.
 def intersecting_tiles(bbox, product_json_data):
@@ -196,20 +200,16 @@ def main():
     vrt_path = os.path.join(workspace, f'0_{product}_mosaic.vrt')
     gdal.BuildVRT(vrt_path, files_to_download)
 
-    # TODO: square off the pixel size and use that instead?
-    vrt_raster_info = pygeoprocessing.get_raster_info(vrt_path)
-
     LOGGER.info("Reprojecting VRT to the local projection")
     srs = osr.SpatialReference()
-    srs.ImportFromEPSG(int(target_projection_epsg))
+    srs.ImportFromEPSG(target_projection_epsg)
     warped_raster = os.path.join(
         workspace, f'1_{product}_cropped_EPSG{target_projection_epsg}.tif')
     pygeoprocessing.warp_raster(
         base_raster_path=vrt_path,
-        target_pixel_size=vrt_raster_info['pixel_size'],
+        target_pixel_size=PRODUCT_TARGET_RESOLUTION_M[product],
         target_raster_path=warped_raster,
         resample_method='bilinear',
-        target_bb=bbox,
         target_projection_wkt=srs.ExportToWkt()
     )
 
