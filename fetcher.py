@@ -28,6 +28,14 @@ PRODUCT_TARGET_RESOLUTION_M = {
     'srtm': (30, -30),
     'hydrosheds': (250, -250),
 }
+COUNTRY_BBOXES_PATH = os.path.join(os.path.dirname(__file__), 'data',
+                                   'country-bboxes.json')
+with open(COUNTRY_BBOXES_PATH) as _country_data_file:
+    COUNTRY_DATA = json.load(_country_data_file)
+
+COUNTRY_NAMES = {
+    name.upper(): bbox for (name, bbox) in COUNTRY_DATA.values()
+}
 
 gdal.SetCacheMax(1024)  # Megabytes
 
@@ -125,7 +133,20 @@ def main():
 
     args = parser.parse_args(sys.argv[1:])
 
-    if os.path.exists(args.boundary):
+    if len(args.boundary) == 2:
+        # It's an ISO-3166-1 code
+        if args.boundary.upper() not in COUNTRY_DATA:
+            parser.error(
+                f'Boundary {args.boundary} is not a known 2-character '
+                'ISO-3166-1 code. See the Alpha-2 code list in '
+                'https://en.wikipedia.org/wiki/ISO_3166-1 for a list of '
+                'valid country codes.')
+        bbox = COUNTRY_DATA[args.boundary.upper()][1]
+    elif args.boundary.upper() in COUNTRY_NAMES:
+        # It's a country name
+        bbox = COUNTRY_NAMES[args.boundary.upper()]
+    elif os.path.exists(args.boundary):
+        # It's a spatial file
         gis_type = pygeoprocessing.get_gis_type(args.boundary)
         if (gis_type & pygeoprocessing.RASTER_TYPE):
             bbox = pygeoprocessing.get_raster_info(
@@ -163,9 +184,9 @@ def main():
     product = args.product.lower()
     if product == 'srtm' and any(
             [args.username is None, args.password is None]):
-        parser.exit(
-            1, ('For SRTM, your NASA EarthData Username and Password are '
-                'required.  Provide them with --username and --password.\n'))
+        parser.error(
+            'For SRTM, your NASA EarthData Username and Password are '
+            'required.  Provide them with --username and --password.\n')
 
     tile_data_file = os.path.join(
         os.path.dirname(__file__), 'data', f'{product}.json')
