@@ -250,7 +250,7 @@ def main():
             int(tfa) for tfa in args.tfa_range.split(':')]
     except AttributeError:
         # Effectively skips TFA calculations
-        min_tfa, max_tfa, tfa_step = [0]*3
+        min_tfa, max_tfa, tfa_step = (0, 0, 1)
 
     cache_dir = args.tile_cache_dir
     if cache_dir is None:
@@ -270,19 +270,95 @@ def main():
     tile_cache_dir = os.path.join(cache_dir, product)
     if not os.path.exists(tile_cache_dir):
         os.makedirs(tile_cache_dir)
+
     for tilename in intersecting_tiles(bbox, tile_data_file):
         tiles_needed += 1
         cached_tile_file = os.path.join(tile_cache_dir, tilename)
-        if not os.path.exists(cached_tile_file):
-            files_to_download.append(cached_tile_file)
+        files_to_download.append(cached_tile_file)
 
-    session = requests.Session()
-    if product == 'srtm':
-        session.auth = (args.username, args.password)
+    with requests.Session() as session:
+        if product == 'srtm':
+            session.auth = (args.username, args.password)
 
-    for filename in tqdm(files_to_download):
-        download(f'{DOWNLOAD_BASE_URLS[product]}/{os.path.basename(filename)}',
-                 filename, session=session)
+        for filename in tqdm(files_to_download):
+            # TODO: md5sum checking
+            if not os.path.exists(cached_tile_file):
+                download(
+                    f'{DOWNLOAD_BASE_URLS[product]}/{os.path.basename(filename)}',
+                    filename, session=session)
+
+    workspace = args.workspace
+    if not os.path.exists(workspace):
+        os.makedirs(workspace)
+    target_projection_epsg = args.target_epsg
+    vrt_path = os.path.join(workspace, f'0_{product}_mosaic.vrt')
+    gdal.BuildVRT(vrt_path, files_to_download)
+
+    # TODO: square off the pixel size and use that instead?
+    vrt_raster_info = pygeoprocessing.get_raster_info(vrt_path)
+
+    srs = osr.SpatialReference()
+    srs.ImportFromEPSG(int(target_projection_epsg))
+    warped_raster = os.path.join(
+        workspace, f'1_{product}_cropped_EPSG{target_projection_epsg}.tif')
+    pygeoprocessing.warp_raster(
+        base_raster_path=vrt_path,
+        target_pixel_size=vrt_raster_info['pixel_size'],
+        target_raster_path=warped_raster,
+        resample_method='bilinear',
+        target_bb=bbox,
+        target_projection_wkt=srs.ExportToWkt()
+    )
+
+    filled_sinks_path = os.path.join(
+        workspace, f'2_{product}_pitfilled.tif')
+    pygeoprocessing.routing.fill_pits(
+        dem_raster_path_band=(warped_raster, 1),
+        target_filled_dem_raster_path=filled_sinks_path,
+        working_dir=workspace
+    )
+
+    routing_method = args.routing_algorithm.lower()
+    flow_dir_kwargs = {
+        'dem_raster_path_band': (filled_sinks_path, 1),
+        'target_flow_dir_path': os.path.join(
+            workspace, f'3_{product}_{routing_method}_flow_dir.tif')
+    }
+
+    # D8 and MFD flow accumulation functions have slightly different function
+    # signatures, so using *args instead of **kwargs
+    flow_accum_path = os.path.join(
+        workspace, f'4_{product}_{routing_method}_flow_accumulation.tif')
+    flow_accum_args = [
+        (flow_dir_kwargs['target_flow_dir_path'], 1), flow_accum_path]
+
+    if routing_method == 'd8':
+        pygeoprocessing.routing.flow_dir_d8(**flow_dir_kwargs)
+        pygeoprocessing.routing.flow_accumulation_d8(*flow_accum_args)
+    else:
+        pygeoprocessing.routing.flow_dir_mfd(**flow_dir_kwargs)
+        pygeoprocessing.routing.flow_accumulation_mfd(*flow_accum_args)
+
+    routing_method = routing_method.lower()
+    streams_dir = os.path.join(workspace, 'streams')
+    if not os.path.exists(streams_dir):
+        os.makedirs(streams_dir)
+
+    for tfa in range(min_tfa, max_tfa+1, tfa_step):
+        streams_raster_path = os.path.join(
+            streams_dir, f'tfa{tfa}_{routing_method}_streams.tif')
+        if routing_method == 'd8':
+            _extract_streams_d8(
+                flow_accum_path=flow_accum_path,
+                tfa=tfa,
+                target_streams_path=streams_raster_path)
+        else:
+            pygeoprocessing.routing.extract_streams_mfd(
+                flow_accum_raster_path_band=(flow_accum_path, 1),
+                flow_dir_mfd_path_band=(
+                    flow_dir_kwargs['target_flow_dir_path'], 1),
+                flow_threshold=tfa,
+                target_stream_raster_path=streams_raster_path)
 
     return
 
