@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import math
 import os
 import sys
 
@@ -38,6 +39,30 @@ COUNTRY_NAMES = {
 }
 
 gdal.SetCacheMax(1024)  # Megabytes
+
+
+def get_utm_zone_epsg_from_point(lat, lon):
+    # See https://gis.stackexchange.com/a/387774 and https://gis.stackexchange.com/a/375285/3570
+    # and also https://en.wikipedia.org/wiki/Universal_Transverse_Mercator_coordinate_system#/media/File:Modified_UTM_Zones.png
+    # Northern Europe/Arctic has some special cases to handle.
+    if lat >= 72.0 and lat < 84.0:
+        if lon >= 0.0 and lon < 9.0:
+            utm_zone = 31
+        if lon >= 9.0 and lon < 21.0:
+            utm_zone = 33
+        if lon >= 21.0 and lon < 33.0:
+            utm_zone = 35
+        if lon >= 33.0 and lon < 42.0:
+            utm_zone = 37
+    if lat >= 56 and lat < 64.0 and lon >= 3 and lon <= 12:
+        utm_zone = 32
+    utm_zone = math.floor((lon + 180) / 6) + 1
+
+    epsg_code = 32600
+    epsg_code += int(utm_zone)
+    if (lat < 0):  # South
+        epsg_code += 100
+    return epsg_code
 
 
 def _extract_streams_d8(flow_accum_path, tfa, target_streams_path):
@@ -168,7 +193,9 @@ def main():
     try:
         target_projection_epsg = int(args.target_epsg)
     except TypeError:
-        raise NotImplementedError('TODO')
+        centroid = shapely.geometry.box(*bbox).centroid
+        target_projection_epsg = get_utm_zone_epsg_from_point(
+            centroid.y, centroid.x)
 
     try:
         min_tfa, max_tfa, tfa_step = [
