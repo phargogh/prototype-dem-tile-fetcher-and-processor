@@ -102,7 +102,7 @@ def main():
     parser.add_argument(
         '--tfa-range', help=(
             'The min, max and step size of threshold flow accumulation values '
-            'to create in the form MIN:MAX:STEP.  Example: 500:10000:200'))
+            'to create in the form MIN:MAX:STEP.  Example: 500::10000::200'))
 
     parser.add_argument(
         '--routing-algorithm', choices=KNOWN_ROUTING_ALGOS,
@@ -151,7 +151,7 @@ def main():
 
     try:
         min_tfa, max_tfa, tfa_step = [
-            int(tfa) for tfa in args.tfa_range.split(':')]
+            int(tfa) for tfa in args.tfa_range.split('::')]
     except AttributeError:
         # Effectively skips TFA calculations
         min_tfa, max_tfa, tfa_step = (0, 0, 1)
