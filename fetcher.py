@@ -47,20 +47,45 @@ def _extract_streams_d8(flow_accum_path, tfa, target_streams_path):
         gdal.GDT_Byte, target_nodata)
 
 
-def download(source_url, target_directory, session=None, auth=None):
+def download(source_url, target_file, session=None):
     # Adapted from https://stackoverflow.com/a/61575758
-    target_file = os.path.join(target_directory, os.path.basename(source_url))
     if session:
         # See session example from https://wiki.earthdata.nasa.gov/display/EL/How+To+Access+Data+With+Python
-        session.auth = auth  # assume auth is (username, password)
-        r1 = session.request('get', source_url)
-        response = session.get(r1.url, auth=auth)
-    response = requests.get(source_url, stream=True)
+        authenticated_request = session.request('get', source_url)
+        response = session.get(authenticated_request.url, stream=True)
+    else:
+        response = requests.get(source_url, stream=True)
+
+    if not response.ok:
+        raise AssertionError(
+            f'Response failed with message "{response.text.strip()}" for '
+            f'url {source_url}')
+
     with tqdm.wrapattr(open(target_file, "wb"), "write",
                        miniters=1, desc=source_url.split('/')[-1],
                        total=int(response.headers.get('content-length', 0))) as fout:
         for chunk in response.iter_content(chunk_size=4096):
             fout.write(chunk)
+
+# find matching tiles.
+def intersecting_tiles(bbox, product_json_data):
+    bbox_geom = shapely.prepared.prep(shapely.geometry.box(*bbox))
+
+    with open(product_json_data) as data_file:
+        json_boundaries = json.load(data_file)
+
+    for tile_filename, tile_bbox in json_boundaries.items():
+        tile_geom = shapely.geometry.Polygon(tile_bbox)
+        if not bbox_geom.intersects(tile_geom):
+            continue
+
+        # TODO: also yield tile file md5sum?
+        yield tile_filename
+
+
+# check tiles against cache and redownload if needed
+
+
 
 
 # cache structure: cache/product/tile
@@ -185,6 +210,11 @@ def main():
         help='Routing algorithm to use.')
 
     parser.add_argument(
+        '--username', help=('The username to log in with. Required for SRTM'))
+    parser.add_argument(
+        '--password', help=('The password to log in with.  Required for SRTM'))
+
+    parser.add_argument(
         'product', metavar='product', choices=KNOWN_PRODUCTS,
         help='The DEM product to use')
 
@@ -226,9 +256,35 @@ def main():
     if cache_dir is None:
         cache_dir = os.path.join(args.workspace, 'tile-cache')
 
-    print(args)
-    print(epsg_code)
-    print(min_tfa, max_tfa, tfa_step)
+    product = args.product.lower()
+    if product == 'srtm' and any(
+            [args.username is None, args.password is None]):
+        parser.exit(
+            1, ('For SRTM, your NASA EarthData Username and Password are '
+                'required.  Provide them with --username and --password.\n'))
+
+    tile_data_file = os.path.join(
+        os.path.dirname(__file__), 'data', f'{product}.json')
+    files_to_download = []
+    tiles_needed = 0
+    tile_cache_dir = os.path.join(cache_dir, product)
+    if not os.path.exists(tile_cache_dir):
+        os.makedirs(tile_cache_dir)
+    for tilename in intersecting_tiles(bbox, tile_data_file):
+        tiles_needed += 1
+        cached_tile_file = os.path.join(tile_cache_dir, tilename)
+        if not os.path.exists(cached_tile_file):
+            files_to_download.append(cached_tile_file)
+
+    session = requests.Session()
+    if product == 'srtm':
+        session.auth = (args.username, args.password)
+
+    for filename in tqdm(files_to_download):
+        download(f'{DOWNLOAD_BASE_URLS[product]}/{os.path.basename(filename)}',
+                 filename, session=session)
+
+    return
 
     # if tile cache directory not set, write the cache to the workspace.
     # TODO: identify the local UTM zone if no EPSG code provided.
