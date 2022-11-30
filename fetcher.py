@@ -39,7 +39,8 @@ def _extract_streams_d8(flow_accum_path, tfa, target_streams_path):
         valid_mask = (flow_accumulation != flow_accum_nodata)
         result = numpy.full(flow_accumulation.shape, target_nodata,
                             dtype=numpy.uint8)
-        result[valid_mask] = numpy.where(flow_accumulation <= tfa, 0, 1)
+        result[valid_mask] = numpy.where(
+            flow_accumulation[valid_mask] <= tfa, 0, 1)
         return result
 
     pygeoprocessing.raster_calculator(
