@@ -1,16 +1,19 @@
 import argparse
 import json
 import logging
+import math
 import os
+import sys
 
 import numpy
 import pygeoprocessing
 import pygeoprocessing.routing
+import requests
 import shapely.geometry
 import shapely.prepared
-import taskgraph
 from osgeo import gdal
 from osgeo import osr
+from tqdm.auto import tqdm
 
 logging.basicConfig(level=logging.INFO)
 # TODO: do MD5sum verification of tiles, tracked in JSON
@@ -19,6 +22,11 @@ logging.basicConfig(level=logging.INFO)
 KNOWN_PRODUCTS = {'SRTM', 'HydroSHEDS'}
 KNOWN_ROUTING_ALGOS = {'D8', 'MFD'}
 LOGGER = logging.getLogger(__name__)
+DOWNLOAD_BASE_URLS = {
+    'srtm': 'https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11',
+}
+
+gdal.SetCacheMax(1024)  # Megabytes
 
 
 def _extract_streams_d8(flow_accum_path, tfa, target_streams_path):
@@ -39,6 +47,22 @@ def _extract_streams_d8(flow_accum_path, tfa, target_streams_path):
         gdal.GDT_Byte, target_nodata)
 
 
+def download(source_url, target_directory, session=None, auth=None):
+    # Adapted from https://stackoverflow.com/a/61575758
+    target_file = os.path.join(target_directory, os.path.basename(source_url))
+    if session:
+        # See session example from https://wiki.earthdata.nasa.gov/display/EL/How+To+Access+Data+With+Python
+        session.auth = auth  # assume auth is (username, password)
+        r1 = session.request('get', source_url)
+        response = session.get(r1.url, auth=auth)
+    response = requests.get(source_url, stream=True)
+    with tqdm.wrapattr(open(target_file, "wb"), "write",
+                       miniters=1, desc=source_url.split('/')[-1],
+                       total=int(response.headers.get('content-length', 0))) as fout:
+        for chunk in response.iter_content(chunk_size=4096):
+            fout.write(chunk)
+
+
 # cache structure: cache/product/tile
 def fetcher(workspace, product, bbox, target_projection_epsg,
             routing_method, cache_dir, min_tfa, max_tfa, tfa_step):
@@ -46,20 +70,30 @@ def fetcher(workspace, product, bbox, target_projection_epsg,
         os.makedirs(workspace)
 
     product = product.lower()
-    bbox_geom = shapely.prepared(shapely.geometry.box(*bbox))
+    bbox_geom = shapely.prepared.prep(shapely.geometry.box(*bbox))
 
     tile_cache_dir = os.path.join(cache_dir, product)
-    tile_data_file = os.path.join(tile_cache_dir, f'{product}.json')
+    if not os.path.exists(tile_cache_dir):
+        os.makedirs(tile_cache_dir)
+
+    tile_data_file = os.path.join(
+        os.path.dirname(__file__), 'data', f'{product}.json')
     with open(tile_data_file) as data_file:
         json_boundaries = json.load(data_file)
 
     intersecting_tiles = []
     for tile_filename, tile_bbox in json_boundaries.items():
-        tile_geom = shapely.geometry.box(*tile_bbox)
-        if not tile_geom.intersects(bbox_geom):
+        tile_geom = shapely.geometry.Polygon(tile_bbox)
+        if not bbox_geom.intersects(tile_geom):
             continue
 
         tile_file = os.path.join(tile_cache_dir, tile_filename)
+        if not os.path.exists(tile_filename):
+            source_url = f'{DOWNLOAD_BASE_URLS[product]}/{tile_filename}'
+            download(source_url, tile_filename)
+            print(tile_filename)
+            return
+
         intersecting_tiles.append(tile_file)
 
     vrt_path = os.path.join(workspace, f'0_{product}_mosaic.vrt')
@@ -71,7 +105,7 @@ def fetcher(workspace, product, bbox, target_projection_epsg,
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(target_projection_epsg)
     warped_raster = os.path.join(
-        workspace, f'1_{product}_cropped_EPSG{epsg_code}.tif')
+        workspace, f'1_{product}_cropped_EPSG{target_projection_epsg}.tif')
     pygeoprocessing.warp_raster(
         base_raster_path=vrt_path,
         target_pixel_size=vrt_raster_info['pixel_size'],
@@ -147,39 +181,38 @@ def main():
             'to create in the form MIN:MAX:STEP.  Example: 500:10000:200'))
 
     parser.add_argument(
-        '--routing-algorithm', help=(
-            'Routing algorithm to use. '
-            f'One of {"|".join(KNOWN_ROUTING_ALGOS)}'))
+        '--routing-algorithm', choices=KNOWN_ROUTING_ALGOS,
+        help='Routing algorithm to use.')
 
     parser.add_argument(
-        'product', help=(
-            'The DEM product to use (case-insentitive), '
-            f'one of {"|".join(KNOWN_PRODUCTS)}'))
+        'product', metavar='product', choices=KNOWN_PRODUCTS,
+        help='The DEM product to use')
 
     # TODO: support searching by an admin region (countries, states)
     parser.add_argument(
         'boundary', help=(
             'The boundary to use. A path to a vector AOI or a lat/lon '
-            'bounding box in the order "minx,miny,maxx,maxy"'))
+            'bounding box in the order "BBOX::minx::miny::maxx::maxy"'))
 
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
 
-    if os.path.exists(args.bbox):
-        gis_type = pygeoprocessing.get_gis_type(args.bbox)
+    if os.path.exists(args.boundary):
+        gis_type = pygeoprocessing.get_gis_type(args.boundary)
         if (gis_type & pygeoprocessing.RASTER_TYPE):
-            bbox = pygeoprocessing.get_raster_info(args.bbox)['bounding_box']
+            bbox = pygeoprocessing.get_raster_info(args.boundary)['bounding_box']
         elif (gis_type & pygeoprocessing.VECTOR_TYPE):
-            bbox = pygeoprocessing.get_vector_info(args.bbox)['bounding_box']
+            bbox = pygeoprocessing.get_vector_info(args.boundary)['bounding_box']
         else:
             raise ValueError('File exists but is not a GDAL filetype: '
                              f'{args.bbox}')
     else:
         # Assume "minx,miny,maxx,maxy"
-        bbox = [float(coord) for coord in args.bbox.split(',')]
+        bbox = [float(coord) for coord in
+                args.boundary.replace('BBOX::', '').split('::')]
 
     try:
         epsg_code = int(args.target_epsg)
-    except AttributeError:
+    except TypeError:
         raise NotImplementedError('TODO')
 
     try:
@@ -187,7 +220,15 @@ def main():
             int(tfa) for tfa in args.tfa_range.split(':')]
     except AttributeError:
         # Effectively skips TFA calculations
-        min_tfa, max_tfa, tfa_step = 0
+        min_tfa, max_tfa, tfa_step = [0]*3
+
+    cache_dir = args.tile_cache_dir
+    if cache_dir is None:
+        cache_dir = os.path.join(args.workspace, 'tile-cache')
+
+    print(args)
+    print(epsg_code)
+    print(min_tfa, max_tfa, tfa_step)
 
     # if tile cache directory not set, write the cache to the workspace.
     # TODO: identify the local UTM zone if no EPSG code provided.
@@ -197,7 +238,7 @@ def main():
         bbox=bbox,
         target_projection_epsg=epsg_code,
         routing_method=args.routing_algorithm,
-        cache_dir=args.tile_cache_dir,
+        cache_dir=cache_dir,
         min_tfa=min_tfa,
         max_tfa=max_tfa,
         tfa_step=tfa_step
