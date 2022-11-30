@@ -68,3 +68,7 @@ echo "}" >> $SRTM_JSON_FILE
 # Remove the comma from the last object to make the json valid.
 # This complicated sed expression is thanks to https://unix.stackexchange.com/a/485010
 sed -i.bak ':begin;$!N;s/,\n}/\n}/g;tbegin;P;D' $SRTM_JSON_FILE
+
+# Checksum the files while we're at it.
+CHECKSUM_FILE="$WORKING_DIR/checksums.md5"
+find "$WORKING_DIR" -name "*.hgt.zip" | xargs md5sum > "$CHECKSUM_FILE"
