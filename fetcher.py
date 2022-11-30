@@ -50,6 +50,7 @@ def _extract_streams_d8(flow_accum_path, tfa, target_streams_path):
 
 def download(source_url, target_file, session=None):
     # Adapted from https://stackoverflow.com/a/61575758
+    LOGGER.info(f"Downloading {source_url} --> {target_file}")
     if session:
         # See session example from https://wiki.earthdata.nasa.gov/display/EL/How+To+Access+Data+With+Python
         authenticated_request = session.request('get', source_url)
@@ -85,113 +86,6 @@ def intersecting_tiles(bbox, product_json_data):
 
 
 # check tiles against cache and redownload if needed
-
-
-
-
-# cache structure: cache/product/tile
-def fetcher(workspace, product, bbox, target_projection_epsg,
-            routing_method, cache_dir, min_tfa, max_tfa, tfa_step):
-    if not os.path.exists(workspace):
-        os.makedirs(workspace)
-
-    product = product.lower()
-    bbox_geom = shapely.prepared.prep(shapely.geometry.box(*bbox))
-
-    tile_cache_dir = os.path.join(cache_dir, product)
-    if not os.path.exists(tile_cache_dir):
-        os.makedirs(tile_cache_dir)
-
-    tile_data_file = os.path.join(
-        os.path.dirname(__file__), 'data', f'{product}.json')
-    with open(tile_data_file) as data_file:
-        json_boundaries = json.load(data_file)
-
-    intersecting_tiles = []
-    for tile_filename, tile_bbox in json_boundaries.items():
-        tile_geom = shapely.geometry.Polygon(tile_bbox)
-        if not bbox_geom.intersects(tile_geom):
-            continue
-
-        tile_file = os.path.join(tile_cache_dir, tile_filename)
-        if not os.path.exists(tile_filename):
-            source_url = f'{DOWNLOAD_BASE_URLS[product]}/{tile_filename}'
-            download(source_url, tile_filename)
-            print(tile_filename)
-            return
-
-        intersecting_tiles.append(tile_file)
-
-    vrt_path = os.path.join(workspace, f'0_{product}_mosaic.vrt')
-    gdal.BuildVRT(vrt_path, intersecting_tiles)
-
-    # TODO: square off the pixel size and use that instead?
-    vrt_raster_info = pygeoprocessing.get_raster_info(vrt_path)
-
-    srs = osr.SpatialReference()
-    srs.ImportFromEPSG(target_projection_epsg)
-    warped_raster = os.path.join(
-        workspace, f'1_{product}_cropped_EPSG{target_projection_epsg}.tif')
-    pygeoprocessing.warp_raster(
-        base_raster_path=vrt_path,
-        target_pixel_size=vrt_raster_info['pixel_size'],
-        target_raster_path=warped_raster,
-        resample_method='bilinear',
-        target_bb=bbox,
-        target_projection_wkt=srs.ExportToWkt()
-    )
-
-    filled_sinks_path = os.path.join(
-        workspace, f'2_{product}_pitfilled.tif')
-    pygeoprocessing.routing.fill_pits(
-        dem_raster_path_band=(warped_raster, 1),
-        target_filled_dem_raster_path=filled_sinks_path,
-        working_dir=workspace
-    )
-
-    routing_method = routing_method.lower()
-    flow_dir_kwargs = {
-        'dem_raster_path_band': (filled_sinks_path, 1),
-        'target_flow_dir_path': os.path.join(
-            workspace, f'3_{product}_{routing_method}_flow_dir.tif')
-    }
-
-    # D8 and MFD flow accumulation functions have slightly different function
-    # signatures, so using *args instead of **kwargs
-    flow_accum_path = os.path.join(
-        workspace, f'4_{product}_{routing_method}_flow_accumulation.tif')
-    flow_accum_args = [
-        (flow_dir_kwargs['target_flow_dir_path'], 1), flow_accum_path]
-
-    if routing_method == 'd8':
-        pygeoprocessing.routing.flow_dir_d8(**flow_dir_kwargs)
-        pygeoprocessing.routing.flow_accumulation_d8(*flow_accum_args)
-    else:
-        pygeoprocessing.routing.flow_dir_mfd(**flow_dir_kwargs)
-        pygeoprocessing.routing.flow_accumulation_mfd(*flow_accum_args)
-
-    routing_method = routing_method.lower()
-    streams_dir = os.path.join(workspace, 'streams')
-    if not os.path.exists(streams_dir):
-        os.makedirs(streams_dir)
-
-    for tfa in range(min_tfa, max_tfa+1, tfa_step):
-        streams_raster_path = os.path.join(
-            streams_dir, f'tfa{tfa}_{routing_method}_streams.tif')
-        if routing_method == 'd8':
-            _extract_streams_d8(
-                flow_accum_path=flow_accum_path,
-                tfa=tfa,
-                target_streams_path=streams_raster_path)
-        else:
-            pygeoprocessing.routing.extract_streams_mfd(
-                flow_accum_raster_path_band=(flow_accum_path, 1),
-                flow_dir_mfd_path_band=(
-                    flow_dir_kwargs['target_flow_dir_path'], 1),
-                flow_threshold=tfa,
-                target_stream_raster_path=streams_raster_path)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--workspace', default=os.getcwd())
@@ -230,16 +124,21 @@ def main():
     if os.path.exists(args.boundary):
         gis_type = pygeoprocessing.get_gis_type(args.boundary)
         if (gis_type & pygeoprocessing.RASTER_TYPE):
-            bbox = pygeoprocessing.get_raster_info(args.boundary)['bounding_box']
+            bbox = pygeoprocessing.get_raster_info(
+                args.boundary)['bounding_box']
         elif (gis_type & pygeoprocessing.VECTOR_TYPE):
-            bbox = pygeoprocessing.get_vector_info(args.boundary)['bounding_box']
+            bbox = pygeoprocessing.get_vector_info(
+                args.boundary)['bounding_box']
         else:
             raise ValueError('File exists but is not a GDAL filetype: '
                              f'{args.bbox}')
+        LOGGER.info(f'Bounding box {bbox} read from spatial file '
+                    f'{args.boundary}')
     else:
         # Assume "minx,miny,maxx,maxy"
         bbox = [float(coord) for coord in
                 args.boundary.replace('BBOX::', '').split('::')]
+        LOGGER.info(f'User defined bounding box of {bbox}')
 
     try:
         epsg_code = int(args.target_epsg)
@@ -284,6 +183,7 @@ def main():
         for filename in tqdm(files_to_download):
             # TODO: md5sum checking
             if not os.path.exists(cached_tile_file):
+                LOGGER.info(f"File not found: {cached_tile_file}")
                 download(
                     f'{DOWNLOAD_BASE_URLS[product]}/{os.path.basename(filename)}',
                     filename, session=session)
@@ -292,12 +192,15 @@ def main():
     if not os.path.exists(workspace):
         os.makedirs(workspace)
     target_projection_epsg = args.target_epsg
+
+    LOGGER.info(f"Building VRT from {len(files_to_download)} tiles")
     vrt_path = os.path.join(workspace, f'0_{product}_mosaic.vrt')
     gdal.BuildVRT(vrt_path, files_to_download)
 
     # TODO: square off the pixel size and use that instead?
     vrt_raster_info = pygeoprocessing.get_raster_info(vrt_path)
 
+    LOGGER.info(f"Reprojecting VRT to the local projection")
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(int(target_projection_epsg))
     warped_raster = os.path.join(
@@ -311,6 +214,7 @@ def main():
         target_projection_wkt=srs.ExportToWkt()
     )
 
+    LOGGER.info(f"Filling sinks")
     filled_sinks_path = os.path.join(
         workspace, f'2_{product}_pitfilled.tif')
     pygeoprocessing.routing.fill_pits(
@@ -334,48 +238,43 @@ def main():
         (flow_dir_kwargs['target_flow_dir_path'], 1), flow_accum_path]
 
     if routing_method == 'd8':
+        LOGGER.info("D8 flow direction")
         pygeoprocessing.routing.flow_dir_d8(**flow_dir_kwargs)
+        LOGGER.info("D8 flow accumulation")
         pygeoprocessing.routing.flow_accumulation_d8(*flow_accum_args)
     else:
+        LOGGER.info("MFD flow direction")
         pygeoprocessing.routing.flow_dir_mfd(**flow_dir_kwargs)
+        LOGGER.info("MFD flow accumulation")
         pygeoprocessing.routing.flow_accumulation_mfd(*flow_accum_args)
 
-    routing_method = routing_method.lower()
-    streams_dir = os.path.join(workspace, 'streams')
-    if not os.path.exists(streams_dir):
-        os.makedirs(streams_dir)
+    if not args.tfa_range:
+        LOGGER.info("No TFA range specified; skipping TFA")
+    else:
+        routing_method = routing_method.lower()
+        streams_dir = os.path.join(workspace, 'streams')
+        if not os.path.exists(streams_dir):
+            os.makedirs(streams_dir)
 
-    for tfa in range(min_tfa, max_tfa+1, tfa_step):
-        streams_raster_path = os.path.join(
-            streams_dir, f'tfa{tfa}_{routing_method}_streams.tif')
-        if routing_method == 'd8':
-            _extract_streams_d8(
-                flow_accum_path=flow_accum_path,
-                tfa=tfa,
-                target_streams_path=streams_raster_path)
-        else:
-            pygeoprocessing.routing.extract_streams_mfd(
-                flow_accum_raster_path_band=(flow_accum_path, 1),
-                flow_dir_mfd_path_band=(
-                    flow_dir_kwargs['target_flow_dir_path'], 1),
-                flow_threshold=tfa,
-                target_stream_raster_path=streams_raster_path)
+        for tfa in range(min_tfa, max_tfa+1, tfa_step):
+            LOGGER.info(f"Extracting streams with TFA {tfa}")
+            streams_raster_path = os.path.join(
+                streams_dir, f'tfa{tfa}_{routing_method}_streams.tif')
+            if routing_method == 'd8':
+                _extract_streams_d8(
+                    flow_accum_path=flow_accum_path,
+                    tfa=tfa,
+                    target_streams_path=streams_raster_path)
+            else:
+                pygeoprocessing.routing.extract_streams_mfd(
+                    flow_accum_raster_path_band=(flow_accum_path, 1),
+                    flow_dir_mfd_path_band=(
+                        flow_dir_kwargs['target_flow_dir_path'], 1),
+                    flow_threshold=tfa,
+                    target_stream_raster_path=streams_raster_path)
+    LOGGER.info("Complete!")
 
-    return
-
-    # if tile cache directory not set, write the cache to the workspace.
     # TODO: identify the local UTM zone if no EPSG code provided.
-    fetcher(
-        workspace=args.workspace,
-        product=args.product,
-        bbox=bbox,
-        target_projection_epsg=epsg_code,
-        routing_method=args.routing_algorithm,
-        cache_dir=cache_dir,
-        min_tfa=min_tfa,
-        max_tfa=max_tfa,
-        tfa_step=tfa_step
-    )
 
 
 if __name__ == '__main__':
