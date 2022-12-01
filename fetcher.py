@@ -19,7 +19,11 @@ logging.basicConfig(level=logging.INFO)
 # TODO: do MD5sum verification of tiles, tracked in JSON
 
 # TODO: Add GMTED2010
-KNOWN_PRODUCTS = {'SRTM', 'HydroSHEDS'}
+KNOWN_PRODUCTS = {
+    'SRTM': ['1s', '3s'],
+    'HydroSHEDS': ['8s'],
+    'GMTED2010': ['7.5s', '15s', '30s'],
+}
 KNOWN_ROUTING_ALGOS = {'D8', 'MFD'}
 LOGGER = logging.getLogger(__name__)
 DOWNLOAD_BASE_URLS = {
@@ -147,8 +151,11 @@ def main():
         '--password', help=('The password to log in with.  Required for SRTM'))
 
     parser.add_argument(
-        'product', metavar='product', choices=KNOWN_PRODUCTS,
+        'product', metavar='product', choices=KNOWN_PRODUCTS.keys(),
         help='The DEM product to use')
+
+    # TODO: add a resolution for the product (e.g. SRTM 1s vs SRTM 3s)
+    # TODO: Add a sub-product, e.g. GMTED minimum vs std deviation
 
     # TODO: support searching by an admin region (countries, states)
     parser.add_argument(
@@ -320,8 +327,6 @@ def main():
                     flow_threshold=tfa,
                     target_stream_raster_path=streams_raster_path)
     LOGGER.info("Complete!")
-
-    # TODO: identify the local UTM zone if no EPSG code provided.
 
 
 if __name__ == '__main__':
