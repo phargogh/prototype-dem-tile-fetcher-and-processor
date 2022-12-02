@@ -16,7 +16,7 @@ set -e
 set -x
 
 DEST_DIR="$SCRATCH/gmted2010/tiles"
-mkdir -p $DEST_DIR || echo "Can't make a folder that already exists"
+mkdir -p "$DEST_DIR" || echo "Can't make a folder that already exists"
 
 SOURCE_URLS="gmted2010-urls.txt"
-wget --no-clobber --no-verbose --directory-prefix=$WORKING_DIR --input-file $SOURCE_URLS
+wget --no-clobber --no-verbose --directory-prefix "$DEST_DIR" --input-file "$SOURCE_URLS"
