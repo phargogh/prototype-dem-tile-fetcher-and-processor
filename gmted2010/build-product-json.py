@@ -9,7 +9,6 @@ logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 json_data = {}
-counter = 0
 with open(sys.argv[1]) as gmted_url_file:
     for line in gmted_url_file:
         gmted_url = line.strip()
@@ -23,10 +22,6 @@ with open(sys.argv[1]) as gmted_url_file:
             json_data[filename] = bbox
         finally:
             raster = None
-
-        counter += 1
-        if counter > 1:
-            break
 
 
 with open('gmted2010.json', 'w') as info_json:
